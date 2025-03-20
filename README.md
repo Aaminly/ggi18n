@@ -13,11 +13,11 @@
 ## 安装使用
 
 ```bash
-npm install -g @aaminly/ggi18n
+npm install -g ggi18n
 # 或者
-yarn add -g @aaminly/ggi18n
+yarn add -g ggi18n
 # 或者
-pnpm add -g @aaminly/ggi18n
+pnpm add -g ggi18n
 # 或者 (推荐)
 npx ggi18n ...
 ```
