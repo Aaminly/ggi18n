@@ -24,15 +24,18 @@ if (!path) {
 }
 
 // 谷歌翻译
-async function trans(txt, to) {
+async function trans(txt, to, errCallback) {
   const langFix = {
     en_US: "en",
+    zh: "zh-CN",
     zh_CN: "zh-CN",
     zh_TW: "zh-TW",
   };
-  return await translate(txt, { to: langFix[to] || to }).then(
-    (res) => res.text[0].toUpperCase() + res.text.substring(1)
-  );
+  return await translate(txt, { to: langFix[to] || to })
+    .then((res) => res.text[0].toUpperCase() + res.text.substring(1))
+    .catch(() => {
+      errCallback?.();
+    });
 }
 
 // 批量翻译
@@ -181,31 +184,43 @@ if (ARGUMENTS.includes("f")) {
 
 // 新增语种
 if (getArg("--new")) {
-  let lang = getArg("--lang=", { replace: true });
-  if (!lang) {
-    console.log("新增语种模式下必须携带 --lang=xx 参数（xx 为翻译语种）");
-  }
-  console.log(`正在基于 en 语种字典翻译成 ${lang} 语种`);
-  fs.cp(
-    `${path}/en_US.json`,
-    `${path}/${lang}.json`,
-    { recursive: true },
-    (err) => {
-      if (!err) {
-        readFiles(
-          lang,
-          async ({ fileObj }) => {
-            await batchTrans(fileObj, lang);
-            return {
-              write: true,
-              msg: `${lang} 语种字典 ${lang} 文件翻译完毕`,
-            };
-          },
-          lang
-        );
+  let lang = getArg("--new=", { replace: true });
+
+  const [oldLang, newLang] = lang.split(":");
+  if (!oldLang || !newLang) {
+    console.error(`ERROR: 必须同时指定旧语种和新语种
+				run: npx gi18n --new=en:ja
+			`);
+  } else {
+    console.log(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`);
+    fs.cp(
+      `${path}/${oldLang}.json`,
+      `${path}/${newLang}.json`,
+      { recursive: true },
+      (err) => {
+        if (!err) {
+          readFiles(
+            newLang,
+            async ({ fileObj }) => {
+              try {
+                await batchTrans(fileObj, newLang, () => {});
+                return {
+                  write: true,
+                  msg: `${newLang} 语种字典翻译完毕`,
+                };
+              } catch (error) {
+                fs.unlink(`${path}/${newLang}.json`, () => {});
+                console.error(
+                  `ERROR: 新增 ${newLang} 语种失败，请检查 ${newLang} 是否为google翻译的语种KEY`
+                );
+              }
+            },
+            newLang
+          );
+        }
       }
-    }
-  );
+    );
+  }
 }
 
 // 单词翻译
@@ -224,18 +239,30 @@ if (getArg("--word=")) {
   // (value = lang === "zh_CN" ? value : await trans(value, lang));
   readFiles(file, async ({ lang, fileObj }) => {
     let write = false;
-
+    const keyStr = keyArr.join(".");
     if (keyArr) {
       let currObj = fileObj;
-      let prevObj;
+      let prevObj = currObj;
       while (keyArr.length) {
+        if (typeof currObj === "string") {
+          console.error(`ERROR: ${key} 是一个 string 类型，请检查输入是否正确`);
+          return;
+        }
         key = keyArr.shift();
         if (!currObj[key]) {
           currObj[key] = {};
-          prevObj = currObj;
         }
+        prevObj = currObj;
         currObj = currObj[key];
       }
+
+      if (
+        typeof prevObj?.[key] !== "string" &&
+        !Object.keys(prevObj?.[key]).length
+      ) {
+        prevObj[key] = "";
+      }
+
       if (!prevObj[key] || isCover) {
         write = true;
         prevObj[key] = await transValue(result, lang);
@@ -249,10 +276,8 @@ if (getArg("--word=")) {
     if (write) {
       return write;
     }
-    console.log(
-      `${lang} 语种 ${
-        obj ? `.${obj}.` : ""
-      }${key} 已存在。如要覆盖，请追加 cover 关键字`
+    console.error(
+      `ERROR: ${lang} 语种 ${keyStr} 已存在。如要覆盖，请追加 --cover 关键字`
     );
   });
   // }
