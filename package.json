@@ -1,6 +1,6 @@
 {
   "name": "@aaminly/gi18n",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "google translate",
   "type": "module",
   "main": "index.js",
