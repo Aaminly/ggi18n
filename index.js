@@ -19,7 +19,7 @@ const path = getArg("--path=", { replace: true });
 if (!path) {
   throw new Error(`
 		请设置需要翻译的文件路径
-		run: npx gi18n path=src/xx ...
+		run: npx ggi18n path=src/xx ...
 		`);
 }
 
@@ -189,7 +189,7 @@ if (getArg("--new")) {
   const [oldLang, newLang] = lang.split(":");
   if (!oldLang || !newLang) {
     console.error(`ERROR: 必须同时指定旧语种和新语种
-				run: npx gi18n --new=en:ja
+				run: npx ggi18n --new=en:ja
 			`);
   } else {
     console.log(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`);

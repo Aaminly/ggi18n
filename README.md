@@ -1,4 +1,4 @@
-# gi18n
+# ggi18n
 
 一个基于Google翻译的多语言翻译工具，可以帮助你快速实现项目的国际化。
 
@@ -13,11 +13,11 @@
 ## 安装（推荐全局安装，可任意项目使用）
 
 ```bash
-npm install -g @aaminly/gi18n
+npm install -g @aaminly/ggi18n
 # 或者
-yarn add -g @aaminly/gi18n
+yarn add -g @aaminly/ggi18n
 # 或者
-pnpm add -g @aaminly/gi18n
+pnpm add -g @aaminly/ggi18n
 ```
 
 ## 使用方法
@@ -27,7 +27,7 @@ pnpm add -g @aaminly/gi18n
 将已有的语言包翻译成新的语种：
 
 ```bash
-gi18n --path=src/lang --word=hello
+ggi18n --path=src/lang --word=hello
 ```
 
 参数说明：
@@ -40,7 +40,7 @@ gi18n --path=src/lang --word=hello
 基于已有语种快速创建新的语言包：
 
 ```bash
-gi18n --path=src/lang --new=en:ja
+ggi18n --path=src/lang --new=en:ja
 ```
 
 参数说明：
