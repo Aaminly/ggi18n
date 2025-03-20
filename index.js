@@ -225,7 +225,7 @@ if (getArg("--new")) {
 
 // 单词翻译
 if (getArg("--word=")) {
-  let { file, obj, key, keyArr, value } = argsObjFormat("--word");
+  let { file, key, keyArr, value } = argsObjFormat("--word");
   const isCover = getArg("--cover");
 
   let result = value;
@@ -239,7 +239,7 @@ if (getArg("--word=")) {
   // (value = lang === "zh_CN" ? value : await trans(value, lang));
   readFiles(file, async ({ lang, fileObj }) => {
     let write = false;
-    const keyStr = keyArr.join(".");
+    const keyStr = keyArr?.join?.(".");
     if (keyArr) {
       let currObj = fileObj;
       let prevObj = currObj;

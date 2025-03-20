@@ -10,14 +10,14 @@
 - 🎯 支持多层级JSON结构的翻译
 - 🌐 支持所有Google翻译支持的语种
 
-## 安装
+## 安装（推荐全局安装，可任意项目使用）
 
 ```bash
-npm install @aaminly/gi18n
+npm install -g @aaminly/gi18n
 # 或者
-yarn add @aaminly/gi18n
+yarn add -g @aaminly/gi18n
 # 或者
-pnpm add @aaminly/gi18n
+pnpm add -g @aaminly/gi18n
 ```
 
 ## 使用方法
@@ -27,7 +27,7 @@ pnpm add @aaminly/gi18n
 将已有的语言包翻译成新的语种：
 
 ```bash
-npx gi18n --path=src/lang --word=hello
+gi18n --path=src/lang --word=hello
 ```
 
 参数说明：
@@ -40,7 +40,7 @@ npx gi18n --path=src/lang --word=hello
 基于已有语种快速创建新的语言包：
 
 ```bash
-npx gi18n --path=src/lang --new=en:ja
+gi18n --path=src/lang --new=en:ja
 ```
 
 参数说明：
