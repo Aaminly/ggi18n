@@ -180,12 +180,10 @@ if (ARGUMENTS.includes("f")) {
 }
 
 // 新增语种
-if (ARGUMENTS.includes("new")) {
-  let lang = ARGUMENTS.find((arg) => arg.startsWith("lang="));
+if (getArg("--new")) {
+  let lang = getArg("--lang=", { replace: true });
   if (!lang) {
-    console.log("新增语种模式下必须携带 lang=xx 参数（xx 为翻译语种）");
-  } else {
-    lang = lang.replace("lang=", "");
+    console.log("新增语种模式下必须携带 --lang=xx 参数（xx 为翻译语种）");
   }
   console.log(`正在基于 en 语种字典翻译成 ${lang} 语种`);
   fs.cp(
