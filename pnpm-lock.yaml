@@ -1,0 +1,39 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@iamtraction/google-translate':
+        specifier: ^2.0.1
+        version: 2.0.1
+
+packages:
+
+  '@fastify/busboy@2.1.1':
+    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
+    engines: {node: '>=14'}
+
+  '@iamtraction/google-translate@2.0.1':
+    resolution: {integrity: sha512-kOTkt23zflxpgxLIe9tLvDU8IvNscXYbgMSXydNkZGWDtJ75YJiU3v7EBz+t7h/gSiY7sT5r4dlFkMrHCl+N6A==}
+    engines: {node: '>=16.0.0'}
+
+  undici@5.29.0:
+    resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
+    engines: {node: '>=14.0'}
+
+snapshots:
+
+  '@fastify/busboy@2.1.1': {}
+
+  '@iamtraction/google-translate@2.0.1':
+    dependencies:
+      undici: 5.29.0
+
+  undici@5.29.0:
+    dependencies:
+      '@fastify/busboy': 2.1.1
