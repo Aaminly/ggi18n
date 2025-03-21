@@ -8,6 +8,7 @@
 - 🔄 支持基于已有语言包快速创建新语种
 - 📝 支持单个翻译文本的快速更新
 - 🎯 支持多层级JSON结构的翻译
+- 🗑️ 支持一键删除所有字典的指定翻译文本
 - 🌐 支持所有Google翻译支持的语种
 
 ## 安装使用
@@ -33,11 +34,26 @@ npx ggi18n --path=src/lang --word=hello
 ```
 
 参数说明：
+
 - `--path`: 语言包所在目录
-- `--word=hello`: 指定是文案翻译,hello为翻译的文案，未制定key=value的value时，hello即为key也为值
+- `--word=hello`: 指定是文案翻译,hello为翻译的文案，未制定key=value的value时，hello即为key也为value
 - `--word=a.b.c=hello`: 多层级翻译支持，如果指定了多层级需要有对应的value值
 
-### 2. 创建新语种
+### 2. 删除文案
+
+将已有的语言包翻译成新的语种：
+
+```bash
+npx ggi18n --path=src/lang --delete=main
+```
+
+参数说明：
+
+- `--path`: 语言包所在目录
+- `--delete=main`: 指定key为main的文案删除
+- `--delete=main.left`: 指定key为main.left的多层级文案删除
+
+### 3. 创建新语种
 
 基于已有语种快速创建新的语言包：
 
@@ -46,8 +62,8 @@ npx ggi18n --path=src/lang --new=en:ja
 ```
 
 参数说明：
-- `--new`: 指定源语种和目标语种，格式为`源语种:目标语种`
 
+- `--new`: 指定源语种和目标语种，格式为`源语种:目标语种`
 
 ## 支持的语言代码
 
