@@ -140,10 +140,11 @@ class Translator {
     if (args.length === 1) {
       key = args[0];
       value = key;
+      cacheKeyArr = key.split(".");
     } else {
       [key, value] = args;
       keyArr = key.split(".");
-      cacheKeyArr = JSON.parse(JSON.stringify(keyArr));
+      cacheKeyArr = key.split(".");
       if (keyArr.length > 1) {
         obj = {};
         currObj = obj;
@@ -249,10 +250,11 @@ class Translator {
     this.readFiles(file, async ({ lang, fileObj }) => {
       let write = false;
       const keyStr = keyArr?.join?.(".");
-      if (keyArr) {
+      const keys = keyStr.split(".");
+      if (keys) {
         let currObj = fileObj;
         let prevObj = currObj;
-        while (keyArr.length) {
+        while (keys.length) {
           if (typeof currObj === "string") {
             console.error(
               `ERROR: ${key} 是一个 string 类型，请检查输入是否正确`
@@ -260,7 +262,7 @@ class Translator {
             return;
           }
 
-          key = keyArr.shift();
+          key = keys.shift();
           if (!currObj[key]) {
             currObj[key] = {};
           }
@@ -294,31 +296,59 @@ class Translator {
     });
   }
 
+  // 替换词条
+  handleReplaceEntry() {
+    const replaceArg = this.getArg("--replace=");
+    if (!replaceArg) return;
+  }
+
   // 删除词条
   handleDeleteEntry() {
-    if (!this.ARGUMENTS.includes("d")) return;
+    const deleteArg = this.getArg("--delete=");
+    if (!deleteArg) return;
 
-    const { file, obj, key } = this.argsObjFormat("d");
-    this.readFiles(file, ({ lang, fileObj }) => {
+    let { key, keyArr } = this.argsObjFormat("--delete");
+
+    this.readFiles(null, ({ lang, fileObj }) => {
       let deleted = false;
-      if (obj && fileObj[obj]) {
-        if (key && fileObj[obj][key]) {
-          deleted = true;
-          delete fileObj[obj][key];
+
+      const deleteNestedKey = (obj, keys) => {
+        if (keys.length === 1) {
+          if (obj.hasOwnProperty(keys[0])) {
+            delete obj[keys[0]];
+            return true;
+          }
+          return false;
         }
-      } else if (key && fileObj[key]) {
-        deleted = true;
+
+        const currentKey = keys[0];
+        if (
+          obj.hasOwnProperty(currentKey) &&
+          typeof obj[currentKey] === "object"
+        ) {
+          return deleteNestedKey(obj[currentKey], keys.slice(1));
+        }
+        return false;
+      };
+
+      if (keyArr) {
+        deleted = deleteNestedKey(fileObj, keyArr);
+      } else if (fileObj.hasOwnProperty(key)) {
         delete fileObj[key];
+        deleted = true;
+        keyArr = [key];
       }
+
       if (!deleted) {
-        console.log(
-          `${lang} 语种文件里未找到 ${file}${obj ? `.${obj}` : ""}.${key}`
+        console.error(
+          `ERROR: ${lang} 语种文件里未找到 ${keyArr ? keyArr.join(".") : key}`
         );
         return;
       }
+
       return {
         write: true,
-        msg: `${lang} 语种 ${file}${obj ? `.${obj}` : ""}.${key} 已删除`,
+        msg: `${lang} 语种 ${keyArr.join(".")} 已删除`,
       };
     });
   }
