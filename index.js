@@ -3,10 +3,24 @@
 import fs from "node:fs";
 import { argv } from "node:process";
 import translate from "@iamtraction/google-translate";
+import inquirer from "inquirer";
+import chalk from "chalk";
+import ora from "ora";
 
 class Translator {
   constructor() {
     this.ARGUMENTS = argv.slice(2);
+    this.spinner = ora();
+    this.path = null;
+    this.word = null;
+    this.commands = [
+      { name: "文件翻译", value: "file", show: false },
+      { name: "单词翻译", value: "word" },
+      { name: "删除词条", value: "delete" },
+      { name: "新增语种", value: "new" },
+      { name: "检查词条", value: "check", show: false },
+      { name: "重命名词条", value: "rename", show: false },
+    ];
   }
 
   getArg(name, config) {
@@ -74,7 +88,7 @@ class Translator {
   }
 
   // 文件读取
-  readFiles(file, callback, lang) {
+  async readFiles(file, callback, lang) {
     const path = this.getArg("--path=", { replace: true });
 
     if (!path) {
@@ -84,7 +98,7 @@ class Translator {
         `);
     }
 
-    fs.readdir(path, async (err, files) => {
+    await fs.readdir(path, async (err, files) => {
       if (!err) {
         const arr = lang ? [lang] : files;
         if (!arr.length) {
@@ -102,7 +116,7 @@ class Translator {
           const { write, msg } =
             typeof result === "boolean" ? { write: result } : result || {};
           if (write) {
-            this.objToFile({
+            await this.objToFile({
               msg,
               lang: lang.replace(".json", ""),
               pathName,
@@ -117,10 +131,10 @@ class Translator {
   }
 
   // 处理完的对象写入文件
-  objToFile({ msg, lang, pathName, fileObj }) {
+  async objToFile({ msg, lang, pathName, fileObj }) {
     const objStr = JSON.stringify(fileObj, null, 2);
     fs.writeFileSync(pathName, objStr);
-    console.log(msg || `${lang} 语种字典写入完毕`);
+    this.spinner.succeed(chalk.green(msg || `${lang} 语种字典写入完毕`));
   }
 
   // args obj层级解构
@@ -203,7 +217,9 @@ class Translator {
     }
 
     const path = this.getArg("--path=", { replace: true });
-    console.log(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`);
+    this.spinner.succeed(
+      chalk.yellow(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`)
+    );
     fs.cp(
       `${path}/${oldLang}.json`,
       `${path}/${newLang}.json`,
@@ -234,7 +250,7 @@ class Translator {
   }
 
   // 单词翻译
-  handleWordTranslation() {
+  async handleWordTranslation() {
     const wordArg = this.getArg("--word=");
     if (!wordArg) return;
 
@@ -247,7 +263,7 @@ class Translator {
       return result;
     };
 
-    this.readFiles(file, async ({ lang, fileObj }) => {
+    await this.readFiles(file, async ({ lang, fileObj }) => {
       let write = false;
       const keyStr = keyArr?.join?.(".");
       const keys = keyStr.split(".");
@@ -415,14 +431,213 @@ class Translator {
     });
   }
 
-  // 执行所有操作
-  run() {
-    this.handleFileTranslation();
-    this.handleNewLanguage();
+  // 显示主菜单
+  async showMainMenu() {
+    // 检查是否有缓存的路径
+    this.path = this.getArg("--path=", { replace: true });
+    this.word = this.getArg("--word=", { replace: true });
+
+    const { command } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "command",
+        message: chalk.cyan("请选择要执行的操作："),
+        choices: this.commands.filter((item) => item.show ?? true),
+      },
+    ]);
+
+    switch (command) {
+      case "file":
+        await this.showFileTranslationMenu();
+        break;
+      case "new":
+        await this.showNewLanguageMenu();
+        break;
+      case "word":
+        await this.showWordTranslationMenu();
+        break;
+      case "delete":
+        await this.showDeleteEntryMenu();
+        break;
+      case "check":
+        await this.showCheckEntryMenu();
+        break;
+      case "rename":
+        await this.showRenameEntryMenu();
+        break;
+    }
+  }
+
+  async createAnswers(answers) {
+    if (this.word) {
+      answers = answers.filter((item) => item.name !== "word");
+      this.spinner.succeed(chalk.green(`翻译：${this.word}`));
+    }
+    return await inquirer.prompt([
+      ...(this.path
+        ? []
+        : [
+            {
+              type: "input",
+              name: "path",
+              message: chalk.cyan("请输入翻译文件路径："),
+              validate: (input) => !!input || "路径不能为空",
+            },
+          ]),
+      ...answers,
+    ]);
+  }
+
+  // 文件翻译菜单
+  async showFileTranslationMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "lang",
+        message: chalk.cyan("请输入目标语言："),
+        validate: (input) => !!input || "语言不能为空",
+      },
+      {
+        type: "input",
+        name: "file",
+        message: chalk.cyan("请输入翻译字典文件名："),
+        validate: (input) => !!input || "文件名不能为空",
+      },
+    ]);
+
+    this.ARGUMENTS = [
+      "f",
+      `lang=${answers.lang}`,
+      `file=${answers.file}`,
+      `--path=${answers.path}`,
+    ];
+    this.spinner.start(chalk.yellow("正在翻译文件..."));
+    await this.handleFileTranslation();
+    this.spinner.succeed(chalk.green("翻译完成！"));
+  }
+
+  // 新增语种菜单
+  async showNewLanguageMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "oldLang",
+        message: chalk.cyan("请输入源语言："),
+        validate: (input) => !!input || "语言不能为空",
+      },
+      {
+        type: "input",
+        name: "newLang",
+        message: chalk.cyan("请输入目标语言："),
+        validate: (input) => !!input || "语言不能为空",
+      },
+    ]);
+
+    this.ARGUMENTS = [
+      `--new=${answers.oldLang}:${answers.newLang}`,
+      `--path=${answers.path}`,
+    ];
+    this.pathCache = answers.path;
+    this.spinner.start(chalk.yellow("正在新增语种..."));
+    await this.handleNewLanguage();
+    this.spinner.succeed(chalk.green("新增语种完成！"));
+  }
+
+  // 单词翻译菜单
+  async showWordTranslationMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "word",
+        message: chalk.cyan("请输入要翻译的词条："),
+        validate: (input) => !!input || "词条不能为空",
+      },
+      {
+        type: "confirm",
+        name: "cover",
+        message: chalk.cyan("是否覆盖已存在的词条？"),
+        default: false,
+      },
+    ]);
+
+    this.ARGUMENTS = [
+      `--word=${answers.word}`,
+      `--path=${this.path || answers.path}`,
+    ];
+    if (answers.cover) this.ARGUMENTS.push("--cover");
+    this.pathCache = answers.path;
+    this.spinner.start(chalk.yellow("正在翻译词条..."));
     this.handleWordTranslation();
-    this.handleDeleteEntry();
-    this.handleCheckEntry();
-    this.handleRenameEntry();
+  }
+
+  // 删除词条菜单
+  async showDeleteEntryMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "key",
+        message: chalk.cyan("请输入要删除的词条："),
+        validate: (input) => !!input || "词条不能为空",
+      },
+    ]);
+
+    this.ARGUMENTS = [`--delete=${answers.key}`, `--path=${answers.path}`];
+    this.pathCache = answers.path;
+    this.spinner.start(chalk.yellow("正在删除词条..."));
+    await this.handleDeleteEntry();
+    this.spinner.succeed(chalk.green("词条删除完成！"));
+  }
+
+  // 检查词条菜单
+  async showCheckEntryMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "key",
+        message: chalk.cyan("请输入要检查的词条："),
+        validate: (input) => !!input || "词条不能为空",
+      },
+    ]);
+
+    this.ARGUMENTS = ["has", `has=${answers.key}`, `--path=${answers.path}`];
+    this.pathCache = answers.path;
+    this.spinner.start(chalk.yellow("正在检查词条..."));
+    await this.handleCheckEntry();
+    this.spinner.succeed(chalk.green("词条检查完成！"));
+  }
+
+  // 重命名词条菜单
+  async showRenameEntryMenu() {
+    const answers = await this.createAnswers([
+      {
+        type: "input",
+        name: "oldKey",
+        message: chalk.cyan("请输入要重命名的词条："),
+        validate: (input) => !!input || "词条不能为空",
+      },
+      {
+        type: "input",
+        name: "newKey",
+        message: chalk.cyan("请输入新的词条名："),
+        validate: (input) => !!input || "词条名不能为空",
+      },
+    ]);
+
+    this.ARGUMENTS = [
+      "rename",
+      `rename=${answers.oldKey} ${answers.newKey}`,
+      `--path=${answers.path}`,
+    ];
+    this.pathCache = answers.path;
+    this.spinner.start(chalk.yellow("正在重命名词条..."));
+    await this.handleRenameEntry();
+    this.spinner.succeed(chalk.green("词条重命名完成！"));
+  }
+
+  // 执行所有操作
+  async run() {
+    console.log(chalk.bold.blue("欢迎使用多语言翻译工具！"));
+    await this.showMainMenu();
   }
 }
 
