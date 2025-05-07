@@ -136,6 +136,16 @@ class Translator {
         throw new Error(`文件写入失败: ${normalizedPath} 文件大小为0`);
       }
 
+      // Windows系统额外验证：写入后立即读取验证内容
+      if (process.platform === "win32") {
+        const writtenContent = fs.readFileSync(normalizedPath, "utf8");
+        if (writtenContent !== objStr) {
+          throw new Error(
+            `Windows文件写入验证失败: ${normalizedPath} 内容不一致`
+          );
+        }
+      }
+
       console.log(
         msg || `${lang} 语种字典写入完毕 (大小: ${stats.size} bytes)`
       );
