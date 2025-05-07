@@ -118,9 +118,15 @@ class Translator {
 
   // 处理完的对象写入文件
   objToFile({ msg, lang, pathName, fileObj }) {
-    const objStr = JSON.stringify(fileObj, null, 2);
-    fs.writeFileSync(pathName, objStr);
-    console.log(msg || `${lang} 语种字典写入完毕`);
+    try {
+      const path = require("path");
+      const normalizedPath = path.normalize(pathName);
+      const objStr = JSON.stringify(fileObj, null, 2);
+      fs.writeFileSync(normalizedPath, objStr);
+      console.log(msg || `${lang} 语种字典写入完毕`);
+    } catch (error) {
+      console.error("写入文件失败", error);
+    }
   }
 
   // args obj层级解构
