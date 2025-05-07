@@ -122,10 +122,29 @@ class Translator {
       const path = require("path");
       const normalizedPath = path.normalize(pathName);
       const objStr = JSON.stringify(fileObj, null, 2);
-      fs.writeFileSync(normalizedPath, objStr);
-      console.log(msg || `${lang} 语种字典写入完毕`);
+
+      // 确保文件写入完成并刷新到磁盘
+      const fd = fs.openSync(normalizedPath, "w");
+      fs.writeSync(fd, objStr);
+      fs.fsyncSync(fd);
+      fs.closeSync(fd);
+
+      // 验证文件是否成功写入
+      const stats = fs.statSync(normalizedPath);
+      if (stats.size === 0) {
+        throw new Error(`文件写入失败: ${normalizedPath} 文件大小为0`);
+      }
+
+      console.log(
+        msg || `${lang} 语种字典写入完毕 (大小: ${stats.size} bytes)`
+      );
     } catch (error) {
-      console.error("写入文件失败", error);
+      console.error(`写入文件失败: ${normalizedPath}`, {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+      });
+      throw error;
     }
   }
 
