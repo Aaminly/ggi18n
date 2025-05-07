@@ -3,10 +3,17 @@
 import fs from "node:fs";
 import { argv } from "node:process";
 import translate from "@iamtraction/google-translate";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pkg = require("./package.json");
 
 class Translator {
   constructor() {
     this.ARGUMENTS = argv.slice(2);
+    if (this.ARGUMENTS.includes("-v")) {
+      console.log(`ggi18n version: ${pkg.version}`);
+      process.exit(0);
+    }
   }
 
   getArg(name, config) {
