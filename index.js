@@ -2,10 +2,17 @@
 
 import fs from "node:fs";
 import { argv } from "node:process";
-import translate from "@iamtraction/google-translate";
+import { GoogleTranslator } from "@translate-tools/core/translators/GoogleTranslator/index.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
+
+const Trans = new GoogleTranslator({
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
+  },
+});
 
 class Translator {
   constructor() {
@@ -32,8 +39,8 @@ class Translator {
       zh_CN: "zh-CN",
       zh_TW: "zh-TW",
     };
-    return await translate(txt, { to: langFix[to] || to })
-      .then((res) => res.text[0].toUpperCase() + res.text.substring(1))
+    return await Trans.translate(txt, "auto", langFix[to] || to)
+      .then((res) => res[0].toUpperCase() + res.substring(1))
       .catch(() => {
         errCallback?.();
       });

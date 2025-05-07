@@ -17,7 +17,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@iamtraction/google-translate": "^2.0.1"
+    "@iamtraction/google-translate": "github:iamtraction/google-translate",
+    "@translate-tools/core": "^2.0.1"
   },
   "publishConfig": {
     "access": "public"
