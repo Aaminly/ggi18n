@@ -118,44 +118,77 @@ class Translator {
   }
 
   // 处理完的对象写入文件
-  objToFile({ msg, lang, pathName, fileObj }) {
+  async objToFile({ msg, lang, pathName, fileObj }) {
     let normalizedPath;
-    try {
-      normalizedPath = path.normalize(pathName);
-      const objStr = JSON.stringify(fileObj, null, 2);
+    const MAX_RETRIES = 3;
+    let retryCount = 0;
 
-      // 确保文件写入完成并刷新到磁盘
-      const fd = fs.openSync(normalizedPath, "w");
-      fs.writeSync(fd, objStr);
-      fs.fsyncSync(fd);
-      fs.closeSync(fd);
+    while (retryCount < MAX_RETRIES) {
+      try {
+        normalizedPath = path.normalize(pathName);
+        const objStr = JSON.stringify(fileObj, null, 2);
 
-      // 验证文件是否成功写入
-      const stats = fs.statSync(normalizedPath);
-      if (stats.size === 0) {
-        throw new Error(`文件写入失败: ${normalizedPath} 文件大小为0`);
-      }
+        // 确保文件写入完成并刷新到磁盘
+        const fd = fs.openSync(normalizedPath, "w");
+        fs.writeSync(fd, objStr);
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
 
-      // Windows系统额外验证：写入后立即读取验证内容
-      if (process.platform === "win32") {
-        const writtenContent = fs.readFileSync(normalizedPath, "utf8");
-        if (writtenContent !== objStr) {
-          throw new Error(
-            `Windows文件写入验证失败: ${normalizedPath} 内容不一致`
-          );
+        // 验证文件是否成功写入
+        const stats = fs.statSync(normalizedPath);
+        if (stats.size === 0) {
+          throw new Error(`文件写入失败: ${normalizedPath} 文件大小为0`);
         }
-      }
 
-      console.log(
-        msg || `${lang} 语种字典写入完毕 (大小: ${stats.size} bytes)`
-      );
-    } catch (error) {
-      console.error(`写入文件失败: ${normalizedPath}`, {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-      });
-      throw error;
+        // Windows系统额外验证
+        if (process.platform === "win32") {
+          // 检查文件权限
+          try {
+            fs.accessSync(normalizedPath, fs.constants.W_OK);
+          } catch (accessError) {
+            throw new Error(`文件权限不足: ${normalizedPath}`);
+          }
+
+          // 验证文件内容
+          const writtenContent = fs.readFileSync(normalizedPath, "utf8");
+          if (writtenContent !== objStr) {
+            throw new Error(
+              `Windows文件写入验证失败: ${normalizedPath} 内容不一致`
+            );
+          }
+
+          // 检查文件锁定状态
+          try {
+            const tempFd = fs.openSync(normalizedPath, "r+");
+            fs.closeSync(tempFd);
+          } catch (lockError) {
+            throw new Error(`文件被锁定: ${normalizedPath}`);
+          }
+        }
+
+        console.log(
+          msg || `${lang} 语种字典写入完毕 (大小: ${stats.size} bytes)`
+        );
+        break;
+      } catch (error) {
+        retryCount++;
+        if (retryCount >= MAX_RETRIES) {
+          console.error(
+            `写入文件失败(重试${MAX_RETRIES}次后): ${normalizedPath}`,
+            {
+              error: error.message,
+              stack: error.stack,
+              timestamp: new Date().toISOString(),
+              platform: process.platform,
+              retryCount,
+            }
+          );
+          throw error;
+        }
+
+        // 等待100ms后重试
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
     }
   }
 

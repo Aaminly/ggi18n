@@ -26,3 +26,5 @@ src
 stats.html
 
 push.sh
+
+src/**/*
