@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import path from "node:path";
 import { argv } from "node:process";
 import translate from "@iamtraction/google-translate";
 
@@ -118,9 +119,9 @@ class Translator {
 
   // 处理完的对象写入文件
   objToFile({ msg, lang, pathName, fileObj }) {
+    let normalizedPath;
     try {
-      const path = require("path");
-      const normalizedPath = path.normalize(pathName);
+      normalizedPath = path.normalize(pathName);
       const objStr = JSON.stringify(fileObj, null, 2);
 
       // 确保文件写入完成并刷新到磁盘
