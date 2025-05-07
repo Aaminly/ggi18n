@@ -1,6 +1,6 @@
 {
   "name": "ggi18n",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "description": "google translate",
   "type": "module",
   "main": "index.js",
