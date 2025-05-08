@@ -137,7 +137,10 @@ class Translator {
       const normalizedPath = path.normalize(pathName);
       const objStr = JSON.stringify(fileObj, null, 2);
       fs.writeFileSync(normalizedPath, objStr);
-      console.log(msg || `${lang} 语种字典写入完毕`);
+      console.log(
+        msg ||
+          `${lang} 语种字典写入完毕，共 ${Object.keys(fileObj).length} 条词条`
+      );
     } catch (error) {
       console.error("写入文件失败", error);
     }
@@ -160,7 +163,7 @@ class Translator {
     if (args.length === 1) {
       key = args[0];
       value = key;
-      cacheKeyArr = key.split(".");
+      cacheKeyArr = key.includes("=") ? key.split(".") : args;
     } else {
       [key, value] = args;
       keyArr = key.split(".");
@@ -264,7 +267,7 @@ class Translator {
     let result = value;
     const transValue = async (value, lang) => {
       result = await this.trans(value || key, lang);
-      console.log(`${lang} 语种 ${key} 翻译结果：`, result);
+      // console.log(`${lang} 语种 ${key} 翻译结果：`, result);
 
       return result;
     };
@@ -272,7 +275,7 @@ class Translator {
     this.readFiles(file, async ({ lang, fileObj }) => {
       let write = false;
       const keyStr = keyArr?.join?.(".");
-      const keys = keyStr.split(".");
+      const keys = keyArr.length > 1 ? keyStr.split(".") : keyArr;
       if (keys) {
         let currObj = fileObj;
         let prevObj = currObj;
