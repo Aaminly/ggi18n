@@ -17,8 +17,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@iamtraction/google-translate": "^2.0.1",
     "chalk": "^5.4.1",
+    "google-translate-api-x": "^10.7.2",
     "inquirer": "^12.5.0",
     "ora": "^8.2.0"
   },

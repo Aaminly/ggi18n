@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import { argv } from "node:process";
-import translate from "@iamtraction/google-translate";
+import translate from "google-translate-api-x";
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
@@ -636,7 +636,7 @@ class Translator {
 
   // 执行所有操作
   async run() {
-    console.log(chalk.bold.blue("欢迎使用多语言翻译工具！"));
+    console.log(chalk.bold.blue("欢迎使用 ggi18n 多语言翻译工具！"));
     await this.showMainMenu();
   }
 }
