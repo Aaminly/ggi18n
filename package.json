@@ -17,9 +17,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@iamtraction/google-translate": "github:iamtraction/google-translate",
-    "@translate-tools/core": "^2.0.1",
     "chalk": "^5.3.0",
+    "google-translate-api-x": "^10.7.2",
     "ora": "^7.0.1"
   },
   "publishConfig": {

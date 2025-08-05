@@ -2,19 +2,13 @@
 
 import fs from "node:fs";
 import { argv } from "node:process";
-import { GoogleTranslator } from "@translate-tools/core/translators/GoogleTranslator/index.js";
+import translate from "google-translate-api-x";
 import { createRequire } from "module";
 import chalk from "chalk";
 import ora from "ora";
+
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
-
-const Trans = new GoogleTranslator({
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
-  },
-});
 
 class Translator {
   constructor() {
@@ -46,7 +40,7 @@ class Translator {
       spinner: "dots",
     }).start();
     try {
-      const result = await Trans.translate(txt, "auto", langFix[to] || to);
+      const { text: result } = await translate(txt, { to: langFix[to] || to });
       if (!result) {
         spinner.fail(chalk.red(`${to} 翻译失败`));
         throw new Error(`翻译失败: ${to}`);
