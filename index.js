@@ -2,23 +2,19 @@
 
 import fs from "node:fs";
 import { argv } from "node:process";
-import { GoogleTranslator } from "@translate-tools/core/translators/GoogleTranslator/index.js";
+import translate from "google-translate-api-x";
 import { createRequire } from "module";
+import chalk from "chalk";
+import ora from "ora";
+
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
-
-const Trans = new GoogleTranslator({
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
-  },
-});
 
 class Translator {
   constructor() {
     this.ARGUMENTS = argv.slice(2);
     if (this.ARGUMENTS.includes("-v")) {
-      console.log(`ggi18n version: ${pkg.version}`);
+      console.log(chalk.blue(`ggi18n version: ${pkg.version}`));
       process.exit(0);
     }
   }
@@ -39,16 +35,32 @@ class Translator {
       zh_CN: "zh-CN",
       zh_TW: "zh-TW",
     };
-    return await Trans.translate(txt, "auto", langFix[to] || to)
-      .then((res) => res[0].toUpperCase() + res.substring(1))
-      .catch(() => {
-        errCallback?.();
-      });
+    const spinner = ora({
+      text: chalk.blue(`正在翻译文本到 ${to} 语种...`),
+      spinner: "dots",
+    }).start();
+    try {
+      const { text: result } = await translate(txt, { to: langFix[to] || to });
+      if (!result) {
+        spinner.fail(chalk.red(`${to} 翻译失败`));
+        throw new Error(`翻译失败: ${to}`);
+      }
+      spinner.succeed(chalk.green(`${to} 翻译完成`));
+      return result[0].toUpperCase() + result.substring(1);
+    } catch (error) {
+      spinner.fail(chalk.red(`翻译失败，API调用超时，请使用增强模式`));
+      throw error;
+    }
   }
 
   // 批量翻译
   async batchTrans(obj, lang) {
     const result = [];
+    const spinner = ora({
+      text: chalk.blue(`正在翻译 ${lang} 语种字典...`),
+      spinner: "dots",
+    }).start();
+    let totalEntries = 0;
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === "string") {
         result.push({
@@ -60,12 +72,20 @@ class Translator {
       }
       if (result.length >= 20) {
         await this.transParse(obj, result, lang);
+        totalEntries += result.length;
+        spinner.text = chalk.blue(
+          `正在翻译 ${lang} 语种字典... ${totalEntries} 条已完成`
+        );
         result.length = 0;
       }
     }
 
     if (result.length) {
       await this.transParse(obj, result, lang);
+      totalEntries += result.length;
+      spinner.succeed(
+        chalk.green(`${lang} 语种字典翻译完成，共 ${totalEntries} 条词条`)
+      );
     }
     // fix translate error
     if (obj.pre) obj.pre = obj.pre.replace(/<\/ br>|< \/br>/g, "</br>");
@@ -102,7 +122,7 @@ class Translator {
       if (!err) {
         const arr = lang ? [lang] : files;
         if (!arr.length) {
-          console.error("未找到需要翻译的文件");
+          console.error(chalk.red("未找到需要翻译的文件"));
         }
         for (const lang of arr) {
           const pathName = `${path}/${lang.replace(".json", "")}.json`;
@@ -125,7 +145,7 @@ class Translator {
           }
         }
       } else {
-        console.log(err);
+        console.error(chalk.red(err));
       }
     });
   }
@@ -137,9 +157,12 @@ class Translator {
       const normalizedPath = path.normalize(pathName);
       const objStr = JSON.stringify(fileObj, null, 2);
       fs.writeFileSync(normalizedPath, objStr);
-      console.log(msg || `${lang} 语种字典写入完毕`);
+      console.log(
+        msg ||
+          chalk.blue(`字典写入完毕，共 ${Object.keys(fileObj).length} 条词条`)
+      );
     } catch (error) {
-      console.error("写入文件失败", error);
+      console.error(chalk.red("写入文件失败"), error);
     }
   }
 
@@ -148,7 +171,7 @@ class Translator {
     let args = this.getArg(type);
 
     if (!args) {
-      console.error(`请确认输入是否正确`);
+      console.error(chalk.yellow(`请确认输入是否正确`));
       return;
     }
 
@@ -160,7 +183,7 @@ class Translator {
     if (args.length === 1) {
       key = args[0];
       value = key;
-      cacheKeyArr = key.split(".");
+      cacheKeyArr = key.includes("=") ? key.split(".") : args;
     } else {
       [key, value] = args;
       keyArr = key.split(".");
@@ -185,14 +208,20 @@ class Translator {
 
     let lang = this.ARGUMENTS.find((arg) => arg.startsWith("lang"));
     if (!lang) {
-      console.log("文件翻译模式下必须携带 lang=xx 参数（xx 为翻译语种）");
+      console.log(
+        chalk.yellow("文件翻译模式下必须携带 lang=xx 参数（xx 为翻译语种）")
+      );
       return;
     }
     lang = lang.replace("lang=", "");
 
     let file = this.ARGUMENTS.find((arg) => arg.startsWith("file="));
     if (!file) {
-      console.log("文件翻译模式下必须携带 file=xx 参数（xx 为翻译字典文件名）");
+      console.log(
+        chalk.yellow(
+          "文件翻译模式下必须携带 file=xx 参数（xx 为翻译字典文件名）"
+        )
+      );
       return;
     }
     file = file.replace("file=", "");
@@ -216,14 +245,18 @@ class Translator {
 
     const [oldLang, newLang] = newLangArg.split(":");
     if (!oldLang || !newLang) {
-      console.error(`ERROR: 必须同时指定旧语种和新语种
+      console.error(
+        chalk.red(`ERROR: 必须同时指定旧语种和新语种
         run: npx ggi18n --new=en:ja
-      `);
+      `)
+      );
       return;
     }
 
     const path = this.getArg("--path=", { replace: true });
-    console.log(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`);
+    console.log(
+      chalk.blue(`正在基于 ${oldLang} 语种字典翻译成 ${newLang} 语种`)
+    );
     fs.cp(
       `${path}/${oldLang}.json`,
       `${path}/${newLang}.json`,
@@ -237,12 +270,14 @@ class Translator {
                 await this.batchTrans(fileObj, newLang, () => {});
                 return {
                   write: true,
-                  msg: `${newLang} 语种字典翻译完毕`,
+                  msg: chalk.green(`${newLang} 语种字典翻译完毕`),
                 };
               } catch (error) {
                 fs.unlink(`${path}/${newLang}.json`, () => {});
                 console.error(
-                  `ERROR: 新增 ${newLang} 语种失败，请检查 ${newLang} 是否为google翻译的语种KEY`
+                  chalk.red(
+                    `ERROR: 新增 ${newLang} 语种失败，请检查 ${newLang} 是否为google翻译的语种KEY`
+                  )
                 );
               }
             },
@@ -264,7 +299,7 @@ class Translator {
     let result = value;
     const transValue = async (value, lang) => {
       result = await this.trans(value || key, lang);
-      console.log(`${lang} 语种 ${key} 翻译结果：`, result);
+      // console.log(`${lang} 语种 ${key} 翻译结果：`, result);
 
       return result;
     };
@@ -272,7 +307,7 @@ class Translator {
     this.readFiles(file, async ({ lang, fileObj }) => {
       let write = false;
       const keyStr = keyArr?.join?.(".");
-      const keys = keyStr.split(".");
+      const keys = keyArr.length > 1 ? keyStr.split(".") : keyArr;
       if (keys) {
         let currObj = fileObj;
         let prevObj = currObj;
@@ -390,9 +425,10 @@ class Translator {
         has = true;
       }
       console.log(
-        `${lang} 语种文件 ${has ? "----已找到----" : "未找到"} ${file}${
-          obj ? `.${obj}` : ""
-        }.${key}`
+        chalk.blue(`${lang} 语种文件 ${
+          has ? chalk.green("----已找到----") : chalk.yellow("未找到")
+        } 
+        ${file}${obj ? `.${obj}` : ""}.${key}`)
       );
     });
   }
@@ -405,7 +441,7 @@ class Translator {
     let rename;
     [key, rename] = key.split(" ");
     if (!rename) {
-      console.log("未找到重命名名称");
+      console.log(chalk.yellow("未找到重命名名称"));
       return;
     }
 
@@ -424,7 +460,9 @@ class Translator {
       }
       if (!has) {
         console.log(
-          `${lang} 语种文件里未找到 ${file}${obj ? `.${obj}` : ""}.${key}`
+          chalk.yellow(
+            `${lang} 语种文件里未找到 ${file}${obj ? `.${obj}` : ""}.${key}`
+          )
         );
         return;
       }
